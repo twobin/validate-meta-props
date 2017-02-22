@@ -9,7 +9,8 @@
 // object
 // oneOfString(['detail', 'summary'])
 // oneOfNumber([10, 100])
-// oneOfType([string, array, number])
+// oneOfType([string, number])
+// oneOfType([array, object])
 // arrayOf(number) // number, string, bool
 // shape({ value: number, text: string }) // 输入的格式
 // urls // 预定义的一种类型，专门用于配置取数 url
@@ -19,6 +20,7 @@ const META_PROPS_TYPE = [
   'urls', 'any', 'arrayOf', 'oneOfString', 'oneOfNumber',
   'oneOfType', 'shape'
 ];
+const META_ONEOF_TYPE = ['string', 'number', 'array', 'object'];
 
 function errMessage(str, callback) {
   callback ? callback() : console.warn('Error: ' + str);
@@ -30,22 +32,6 @@ function warnMessage(str, callback) {
 
 function getTrimStr(str) {
   return str.replace(/(^\s*)|(\s*$)/g, '');
-};
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === '[object String]';
-};
-
-function isFunction(value) {
-  return typeof value === 'function';
-};
-
-function isNumber(value) {
-  return typeof value === 'number';
-};
-
-function isObject(value) {
-  return typeof value === 'object' && value !== null;
 };
 
 function isUndefined(value) {
@@ -60,12 +46,52 @@ function isEmpty(value) {
   return isUndefined(value) || isNull(value);
 };
 
-function isArray(value) {
-  return Object.prototype.toString.call(value) === '[object Array]';
+function isString(value) {
+  if (Object.prototype.toString.call(value) === '[object String]') {
+    return { code: true };
+  }
+
+  return { code: false, error: '要求 string 类型！' };
+};
+
+function isNumber(value) {
+  if (typeof value === 'number') {
+    return { code: true };
+  }
+
+  return { code: false, error: '要求 number 类型！' };
 };
 
 function isBool(value) {
-  return typeof value === 'boolean';
+  if (typeof value === 'boolean') {
+    return { code: true };
+  }
+
+  return { code: false, error: '要求 bool 类型！' };
+};
+
+function isFunction(value) {
+  if (typeof value === 'function') {
+    return { code: true };
+  }
+
+  return { code: false, error: '要求 function 类型！' };
+};
+
+function isObject(value) {
+  if (typeof value === 'object' && value !== null) {
+    return { code: true };
+  }
+
+  return { code: false, error: '要求 object 类型！' };
+};
+
+function isArray(value) {
+  if (Object.prototype.toString.call(value) === '[object Array]') {
+    return { code: true };
+  }
+
+  return { code: false, error: '要求 array 类型！' };
 };
 
 function isShape(value, type) {
@@ -87,10 +113,7 @@ function isShape(value, type) {
           if (typeof value[trimStr[0]] === trimStr[1]) {
             return true;
           }
-          flag = false;
         }
-
-        flag = false;
       }
 
       flag = false;
@@ -98,10 +121,14 @@ function isShape(value, type) {
       return false;
     });
 
-    return flag;
+    if (flag) {
+      return { code: flag };
+    }
+
+    return { code: flag, error: '要求符合 shape 格式！' };
   }
 
-  return false;
+  return { code: false, error: '要求符合 shape 格式！' };
 };
 
 function isOneOf(value, type) {
@@ -120,24 +147,48 @@ function isOneOf(value, type) {
     });
 
     if (data) {
+      // oneOfType([string, number]) || oneOfType([array, object])
       if (type.indexOf('oneOfType') !== -1) {
         for (let i = 0, len = data.length; i < len; i++) {
-          if (META_PROPS_TYPE.indexOf(data[i]) === -1) {
-            return false;
+          if (META_ONEOF_TYPE.indexOf(data[i]) === -1) {
+            return { code: false, error: data[i] + '是未定义类型！oneOfType 仅支持以下类型：' + META_ONEOF_TYPE };
+          }
+
+          if (data[i] === 'number' || data[i] === 'string') {
+            if (isNumber(value).code || isString(value).code) {
+              return { code: true };
+            } else {
+              return { code: false, error: '要求 string 或 number 类型！' };
+            }
+          }
+
+          if (data[i] === 'array' || data[i] === 'object') {
+            if (isArray(value).code || isObject(value).code) {
+              return { code: true };
+            } else {
+              return { code: false, error: '要求 array 或 object 类型！' };
+            }
           }
         }
-        return true;
+        return { code: false, error: 'oneOfType 仅支持以下类型：' + META_ONEOF_TYPE };
       }
 
       if (data.indexOf(value) !== -1) {
-        return true;
+        return { code: true };
+      } else {
+        if (type.indexOf('oneOfNumber') !== -1) {
+          return { code: false, error: '要求 oneOfNumber 为 number 类型！' };
+        }
+        if (type.indexOf('oneOfString') !== -1) {
+          return { code: false, error: '要求 oneOfString 为 string 类型！' };
+        }
       }
     }
 
-    return false;
+    return { code: false, error: '数据格式错误！' };
   }
 
-  return false;
+  return { code: false, error: '写法错误或数据格式错误！' };
 };
 
 function isArrayOf(value, type) {
@@ -145,77 +196,77 @@ function isArrayOf(value, type) {
     if (type === 'arrayOf(number)') {
       for (let i = 0, len = value.length; i < len; i++) {
         if (!isNumber(value[i])) {
-          return false;
+          return { code: false, error: '要求 arrayOf 为 number 类型！' };
         }
       }
 
-      return true;
+      return { code: true };
     }
 
     if (type === 'arrayOf(string)') {
       for (let i = 0, len = value.length; i < len; i++) {
         if (!isString(value[i])) {
-          return false;
+          return { code: false, error: '要求 arrayOf 为 string 类型！' };
         }
       }
 
-      return true;
+      return { code: true };
     }
 
     if (type === 'arrayOf(bool)') {
       for (let i = 0, len = value.length; i < len; i++) {
         if (!isBool(value[i])) {
-          return false;
+          return { code: false, error: '要求 arrayOf 为 bool 类型！' };
         }
       }
 
-      return true;
+      return { code: true };
     }
   }
 
-  return false;
+  return { code: false, error: '要求 array 数据！' };
 };
 
 function validateProps(value, type) {
   if (type) {
     if (type === 'string') {
-      if (isString(value)) {
+      if (isString(value).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 string 类型！' };
+      return { valid: false, error: isString(value).error };
     }
 
     if (type === 'number') {
-      if (isNumber(value)) {
+      if (isNumber(value).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 number 类型！' };
+      return { valid: false, error: isNumber(value).error };
     }
 
     if (type === 'array') {
-      if (isArray(value)) {
+      if (isArray(value).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 array 类型！' };
+      return { valid: false, error: isArray(value).error };
     }
 
     if (type === 'object') {
-      if (isObject(value)) {
+      if (isObject(value).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 object 类型！' };
+      return { valid: false, error: isObject(value).error };
     }
 
     if (type === 'bool') {
-      if (isBool(value)) {
+      if (isBool(value).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 bool 类型！' };
+      return { valid: false, error: isBool(value).error };
     }
 
     if (type === 'urls') {
@@ -226,11 +277,11 @@ function validateProps(value, type) {
     }
 
     if (type === 'func') {
-      if (isFunction(value)) {
+      if (isFunction(value).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 function 类型！' };
+      return { valid: false, error: isFunction(value).error };
     }
 
     // const funcName = 'func(';
@@ -238,43 +289,43 @@ function validateProps(value, type) {
     // }
 
     if (type.indexOf('arrayOf') !== -1) {
-      if (isArrayOf(value, type)) {
+      if (isArrayOf(value, type).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 arrayOf 为 number, string, bool 类型其一！' };
+      return { valid: false, error: isArrayOf(value, type).error };
     }
 
     if (type.indexOf('oneOfNumber') !== -1) {
-      if (isOneOf(value, type)) {
+      if (isOneOf(value, type).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 oneOfNumber 为 number 类型！' };
+      return { valid: false, error: isOneOf(value, type).error };
     }
 
     if (type.indexOf('oneOfString') !== -1) {
-      if (isOneOf(value, type)) {
+      if (isOneOf(value, type).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 oneOfString 为 string 类型！' };
+      return { valid: false, error: isOneOf(value, type).error };
     }
 
     if (type.indexOf('oneOfType') !== -1) {
-      if (isOneOf(value, type)) {
+      if (isOneOf(value, type).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求 oneOfType 类型！' };
+      return { valid: false, error: isOneOf(value, type).error };
     }
 
     if (type.indexOf('shape') !== -1) {
-      if (isShape(value, type)) {
+      if (isShape(value, type).code) {
         return { valid: true };
       }
 
-      return { valid: false, error: '要求符合 shape 格式！' };
+      return { valid: false, error: isShape(value, type).error };
     }
   }
 

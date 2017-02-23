@@ -1,6 +1,6 @@
 {
   "name": "validate-props",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "validate props",
   "main": "lib/index.js",
   "scripts": {

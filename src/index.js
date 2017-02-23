@@ -332,4 +332,66 @@ function validateProps(value, type) {
   return { valid: false, error: 'type 不存在！' };
 };
 
+function convertStringToArray(value, type) {
+  const tempType = (type === 'string' || type === 'number') ? type : 'string';
+  const firstSymbol = '[';
+  const lastSymbol = ']';
+
+  if (value && value.indexOf(firstSymbol) !== -1 && value.indexOf(lastSymbol) !== -1) {
+    const indexFirst = value.indexOf(firstSymbol) + 1;
+    const indexLast = value.indexOf(lastSymbol);
+
+    const data = value.slice(indexFirst, indexLast).split(',').map((entry) => {
+      let temp = getTrimStr(entry);
+
+      if (tempType === 'number') {
+        temp = Number(temp);
+      }
+
+      return temp;
+    });
+
+    if (data && isArray(data)) {
+      return data;
+    }
+
+    return value;
+  }
+
+  return value;
+};
+
+function convertStringToObject(value) {
+  const obj = {};
+  const temp = value.split(',');
+
+  const fields = temp.map(entry => {
+    const str = getTrimStr(entry);
+    return str.replace(/{|}+/g, '');
+  });
+
+  if (isArray(fields)) {
+    fields.map(field => {
+      const item = field.split(':');
+
+      if (item[0] && item[1]) {
+        const item0 = item[0].replace(/'|"|\+/g, '');
+
+        if (!item[1].match(/'|"/g)) {
+          obj[item0] = (!Number(item[1]) && Number(item[1]) !== 0) ? item[1] : Number(item[1]);
+        } else {
+          obj[item0] = item[1].replace(/'|"+/g, '');
+        }
+      }
+      return true;
+    });
+    return isObject(obj) ? obj : value;
+  }
+  return value;
+};
+
 export default validateProps;
+export {
+  convertStringToArray, convertStringToObject,
+};
+

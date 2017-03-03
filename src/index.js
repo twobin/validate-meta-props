@@ -270,6 +270,7 @@ function validateProps(value, type) {
     }
 
     if (type === 'urls') {
+      return { valid: true };
     }
 
     if (type === 'any') {

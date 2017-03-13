@@ -7,11 +7,11 @@
 // func({value: string, data: array}) // 指定函数回调格式
 // bool
 // object
-// oneOfString(['detail', 'summary'])
+// oneOfString([detail, summary])
 // oneOfNumber([10, 100])
 // oneOfType([string, number])
 // oneOfType([array, object])
-// arrayOf(number) // number, string, bool
+// arrayOf(number) // number, string, bool, object
 // shape({ value: number, text: string }) // 输入的格式
 // urls // 预定义的一种类型，专门用于配置取数 url
 
@@ -217,6 +217,16 @@ function isArrayOf(value, type) {
       for (let i = 0, len = value.length; i < len; i++) {
         if (!isBool(value[i])) {
           return { code: false, error: '要求 arrayOf 为 bool 类型！' };
+        }
+      }
+
+      return { code: true };
+    }
+
+    if (type === 'arrayOf(object)') {
+      for (let i = 0, len = value.length; i < len; i++) {
+        if (!isObject(value[i])) {
+          return { code: false, error: '要求 arrayOf 为 object 类型！' };
         }
       }
 
